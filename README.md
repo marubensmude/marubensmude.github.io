@@ -5,15 +5,21 @@ Serve como hub de acesso para todos os sistemas web da Mude Imóveis.
 
 ## Sistemas publicados
 
-| Sistema | URL |
-|---|---|
-| Six Main Points | https://business.imoveismude.com.br/six-main-points/ |
-| Gestão de Leads | https://business.imoveismude.com.br/gestao-leads-mude/ |
-| Mude Leads Inteligência | https://business.imoveismude.com.br/mude-leads/ |
-| Simulador de Financiamento | https://business.imoveismude.com.br/simulador-mude/ |
-| Autorização de Vendas | https://business.imoveismude.com.br/autorizacao-mude/ |
-| Autorização Interna | https://business.imoveismude.com.br/autorizacao-interna/ |
-| Painel de Certidões | https://business.imoveismude.com.br/painel-certidoes-mude_2.html/ |
+| Sistema | Endereço | Público |
+|---|---|---|
+| Six Main Points | /six-main-points/ | Cliente |
+| Ficha de Simulação | /simulador-mude/ficha.html | Cliente |
+| Gestão de Leads | /gestao-leads-mude/ | Equipe |
+| Central de Leads | /mude-leads/ | Equipe |
+| Sistema de Propostas | https://mude-propostas.netlify.app/ | Equipe |
+| Simulador de Financiamento | /simulador-mude/ | Equipe |
+| Autorização de Vendas | /autorizacao-mude/ | Cliente |
+| Autorização Interna | /autorizacao-interna/ | Equipe |
+| Gerenciador de Autorizações | /autorizacao-interna/gerenciador.html | Equipe |
+| Painel de Certidões | /painel-certidoes-mude_2.html/ | Equipe |
+| Gerador de QR Code | /ferramentas/gerador-qrcode.html (arquivo neste repositório) | Equipe |
+
+Em desenvolvimento (card sem link): Mude Avaliações, Mude Radar.
 
 ## DNS
 `business.imoveismude.com.br` → CNAME → `marubensmude.github.io` (Cloudflare, proxy DESATIVADO)
