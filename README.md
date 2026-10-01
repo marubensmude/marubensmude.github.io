@@ -13,6 +13,7 @@ Serve como hub de acesso para todos os sistemas web da Mude Imóveis.
 | Central de Leads | /mude-leads/ | Equipe |
 | Sistema de Propostas | https://mude-propostas.netlify.app/ | Equipe |
 | Simulador de Financiamento | /simulador-mude/ | Equipe |
+| Mude Registro (ITBI, escritura e registro) | /mude-registro/ | Equipe |
 | Autorização de Vendas | /autorizacao-mude/ | Cliente |
 | Autorização Interna | /autorizacao-interna/ | Equipe |
 | Gerenciador de Autorizações | /autorizacao-interna/gerenciador.html | Equipe |
