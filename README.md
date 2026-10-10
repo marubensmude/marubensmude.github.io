@@ -14,13 +14,14 @@ Serve como hub de acesso para todos os sistemas web da Mude Imóveis.
 | Sistema de Propostas | https://mude-propostas.netlify.app/ | Equipe |
 | Simulador de Financiamento | /simulador-mude/ | Equipe |
 | Mude Registro (ITBI, escritura e registro) | /mude-registro/ | Equipe |
+| Mude Radar (curadoria de mercado) | /radar-mude/ | Exclusivo (Mário) |
 | Autorização de Vendas | /autorizacao-mude/ | Cliente |
 | Autorização Interna | /autorizacao-interna/ | Equipe |
 | Gerenciador de Autorizações | /autorizacao-interna/gerenciador.html | Equipe |
 | Painel de Certidões | /painel-certidoes-mude_2.html/ | Equipe |
 | Gerador de QR Code | /ferramentas/gerador-qrcode.html (arquivo neste repositório) | Equipe |
 
-Em desenvolvimento (card sem link): Mude Avaliações, Mude Radar.
+Em desenvolvimento (card sem link): Mude Avaliações.
 
 ## DNS
 `business.imoveismude.com.br` → CNAME → `marubensmude.github.io` (Cloudflare, proxy DESATIVADO)
