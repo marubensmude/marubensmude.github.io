@@ -57,6 +57,8 @@ input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(224,
 .empty{color:var(--muted);font-size:13px;text-align:center;font-weight:300;line-height:1.6}
 .dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .dl .btn{padding:13px 10px;font-size:11px;letter-spacing:.14em}
+.dl .wide{grid-column:1/-1}
+#card.hot{cursor:pointer}
 .hist{margin-top:26px}
 .hist ul{list-style:none;display:flex;flex-direction:column;gap:6px}
 .hist li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:13px;transition:border .2s}
@@ -115,7 +117,7 @@ footer b{color:var(--ink);font-weight:500}
       <div class="opts">
         <label class="chk"><input type="checkbox" id="optLogo" checked> Logo Mude no centro do QR</label>
         <label class="chk"><input type="checkbox" id="optUrl" checked> Exibir texto abaixo do QR</label>
-        <label class="chk" style="grid-column:1/-1"><input type="checkbox" id="optLink"> Exibir também o conteúdo do QR (link ou texto) abaixo</label>
+        <label class="chk" style="grid-column:1/-1"><input type="checkbox" id="optLink"> Exibir “Clique aqui e abra o conteúdo” abaixo do QR (link clicável)</label>
       </div>
       <label>Cor do QR Code</label>
       <div class="seg" id="segColor">
@@ -145,11 +147,12 @@ footer b{color:var(--ink);font-weight:500}
       </div>
       <div class="dl">
         <button class="btn gold" id="dlCard" disabled type="button">Baixar card (PNG)</button>
+        <button class="btn gold" id="dlPdf" disabled type="button">Card em PDF (clicável)</button>
         <button class="btn dark" id="dlQr" disabled type="button">Só o QR (PNG)</button>
         <button class="btn line" id="dlSvg" disabled type="button">QR vetorial (SVG)</button>
-        <button class="btn line" id="cpLink" disabled type="button">Copiar conteúdo</button>
+        <button class="btn line wide" id="cpLink" disabled type="button">Copiar link do conteúdo</button>
       </div>
-      <p class="hint" style="text-align:center;margin-top:10px">Para gráfica, prefira o SVG: ele não perde qualidade em nenhum tamanho.</p>
+      <p class="hint" style="text-align:center;margin-top:10px;line-height:1.5">O “Clique aqui” abre o conteúdo no PDF e na pré-visualização. Imagens PNG não aceitam clique, então para WhatsApp ou e-mail envie o PDF ou o link copiado. Para gráfica, prefira o SVG.</p>
     </div>
   </div>
 </div>
@@ -2463,7 +2466,7 @@ var qrcode = function() {
 qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
 
 var BASE = 'https://business.imoveismude.com.br';
-var GOLD = '#e0b026', INK = '#0d0d0d';
+var GOLD = '#e0b026', GOLD_D = '#a8821c', INK = '#0d0d0d';
 var HKEY = 'mude_qr_historico_v1';
 var $ = function(id){return document.getElementById(id);};
 var state = {color:'#0d0d0d', fmt:'post', mode:'link', url:'', qr:null};
@@ -2569,11 +2572,18 @@ function drawCard(){
     ctx.fillStyle = INK; ctx.font = '500 30px Jost, Arial, sans-serif';
     y += 46; ctx.fillText(fit(below, W - 200), W/2, y); y += 8;
   }
+  state.linkRect = null;
   if (showLink){
-    var link = state.mode === 'link' ? state.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : state.url.replace(/\s+/g, ' ').trim();
-    ctx.fillStyle = '#6d6862'; ctx.font = '400 22px Jost, Arial, sans-serif';
-    y += (showUrl && below) ? 32 : 42; ctx.fillText(fit(link, W - 180), W/2, y);
+    var label = 'Clique aqui e abra o conteúdo';
+    ctx.font = '500 24px Jost, Arial, sans-serif';
+    y += (showUrl && below) ? 34 : 44;
+    var lw = ctx.measureText(label).width + 30;
+    ctx.fillStyle = GOLD_D; ctx.fillText(label + '  ↗', W/2, y);
+    var tw = ctx.measureText(label + '  ↗').width;
+    ctx.fillRect(W/2 - tw/2, y + 6, tw, 1.5);
+    state.linkRect = {x: W/2 - tw/2 - 16, y: y - 30, w: tw + 32, h: 46};
   }
+  $('card').classList.toggle('hot', !!state.linkRect);
   ctx.fillStyle = '#fff'; ctx.font = '500 21px Jost, Arial, sans-serif';
   spaced(ctx, 'MUDE IMÓVEIS', W/2, H - 54, 6);
   ctx.fillStyle = GOLD; ctx.font = '300 17px Jost, Arial, sans-serif';
@@ -2602,7 +2612,7 @@ function generate(save){
     n = normalize($('url').value);
     if (!n.ok && save && !n.msg) n.msg = 'Informe o link da página.';
   }
-  if (!n.ok){ hint.className = 'hint' + (n.msg ? ' err' : ''); hint.textContent = n.msg || ''; state.qr = null; $('card').style.display = 'none'; $('empty').style.display = ''; ['dlCard','dlQr','dlSvg','cpLink'].forEach(function(id){ $(id).disabled = true; }); return false; }
+  if (!n.ok){ hint.className = 'hint' + (n.msg ? ' err' : ''); hint.textContent = n.msg || ''; state.qr = null; $('card').style.display = 'none'; $('empty').style.display = ''; ['dlCard','dlPdf','dlQr','dlSvg','cpLink'].forEach(function(id){ $(id).disabled = true; }); return false; }
   try { state.qr = makeQR(n.url, $('optLogo').checked); }
   catch(e){ hint.className = 'hint err'; hint.textContent = (state.mode === 'text' ? 'Texto' : 'Link') + ' longo demais para um QR Code legível. Reduza o conteúdo' + ($('optLogo').checked ? ' ou desmarque a logo no centro.' : '.'); return false; }
   state.url = n.url;
@@ -2612,7 +2622,7 @@ function generate(save){
   } else { hint.className = 'hint ok'; hint.textContent = 'QR aponta para: ' + n.url; }
   imgsReady.then(drawCard);
   $('empty').style.display = 'none'; $('card').style.display = 'block';
-  ['dlCard','dlQr','dlSvg','cpLink'].forEach(function(id){ $(id).disabled = false; });
+  ['dlCard','dlPdf','dlQr','dlSvg','cpLink'].forEach(function(id){ $(id).disabled = false; });
   if (save) saveHist();
   return true;
 }
@@ -2622,6 +2632,60 @@ var timer; function auto(){ clearTimeout(timer); timer = setTimeout(function(){ 
 function slug(){ var t = $('title').value.trim() || (state.mode === 'text' ? 'texto' : state.url.replace(/^https?:\/\//,'')); return 'qrcode-' + t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50); }
 function download(href, name){ var a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
 function dlCanvas(cv, name){ cv.toBlob(function(b){ var u = URL.createObjectURL(b); download(u, name); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); }, 'image/png'); }
+
+/* ---------- Link do conteúdo ---------- */
+function b64u(s){ var b = new TextEncoder().encode(s), bin = ''; for (var i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]); return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function contentHref(){
+  if (state.mode === 'link') return state.url;
+  var h = '#t=' + b64u(state.url); var ti = $('title').value.trim(); if (ti) h += '&h=' + b64u(ti);
+  return BASE + '/ferramentas/conteudo.html' + h;
+}
+$('card').addEventListener('click', function(e){
+  var r = state.linkRect; if (!r) return;
+  var cv = $('card'), b = cv.getBoundingClientRect(), k = cv.width / b.width;
+  var x = (e.clientX - b.left) * k, y = (e.clientY - b.top) * k;
+  if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) window.open(contentHref(), '_blank', 'noopener');
+});
+$('card').addEventListener('mousemove', function(e){
+  var r = state.linkRect, cv = $('card'); if (!r){ cv.style.cursor = ''; return; }
+  var b = cv.getBoundingClientRect(), k = cv.width / b.width, x = (e.clientX - b.left) * k, y = (e.clientY - b.top) * k;
+  cv.style.cursor = (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) ? 'pointer' : 'default';
+});
+
+/* ---------- PDF do card com link ativo ---------- */
+function cardPdf(){
+  var cv = $('card'), W = cv.width, H = cv.height, pw = W * 0.5, ph = H * 0.5;
+  var jpg = atob(cv.toDataURL('image/jpeg', 0.95).split(',')[1]);
+  var objs = [], enc = new TextEncoder();
+  function pdfStr(s){ return '(' + s.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)') + ')'; }
+  var href = contentHref(), annots = '';
+  if (state.linkRect){
+    var r = state.linkRect, x1 = r.x * 0.5, x2 = (r.x + r.w) * 0.5, y1 = ph - (r.y + r.h) * 0.5, y2 = ph - r.y * 0.5;
+    annots = ' /Annots [5 0 R]';
+    objs[5] = '<< /Type /Annot /Subtype /Link /Rect [' + [x1,y1,x2,y2].map(function(v){ return v.toFixed(2); }).join(' ') + '] /Border [0 0 0] /A << /S /URI /URI ' + pdfStr(href) + ' >> >>';
+  }
+  var content = 'q ' + pw + ' 0 0 ' + ph + ' 0 0 cm /Im0 Do Q';
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+  objs[3] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 6 0 R' + annots + ' >>';
+  objs[6] = '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream';
+  var parts = [], offs = [], pos = 0;
+  function push(s, bin){ var bytes = bin ? Uint8Array.from(s, function(c){ return c.charCodeAt(0); }) : enc.encode(s); parts.push(bytes); pos += bytes.length; }
+  push('%PDF-1.4\n%\u00e2\u00e3\n');
+  for (var i = 1; i <= 6; i++){
+    if (i === 4){ offs[4] = pos; push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n'); push(jpg, true); push('\nendstream\nendobj\n'); continue; }
+    if (!objs[i]){ offs[i] = pos; push(i + ' 0 obj\nnull\nendobj\n'); continue; }
+    offs[i] = pos; push(i + ' 0 obj\n' + objs[i] + '\nendobj\n');
+  }
+  var xref = pos, x = 'xref\n0 7\n0000000000 65535 f \n';
+  for (var j = 1; j <= 6; j++) x += ('0000000000' + offs[j]).slice(-10) + ' 00000 n \n';
+  push(x + 'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+  return new Blob(parts, {type:'application/pdf'});
+}
+$('dlPdf').onclick = function(){
+  var u = URL.createObjectURL(cardPdf()), a = document.createElement('a'); a.href = u; a.download = slug() + '-card.pdf'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+  toast(state.linkRect ? 'PDF baixado com o link ativo' : 'PDF baixado (marque “Clique aqui” para ter link)'); saveHist();
+};
 
 $('dlCard').onclick = function(){ dlCanvas($('card'), slug() + '-card.png'); toast('Card baixado'); saveHist(); };
 $('dlQr').onclick = function(){
@@ -2645,7 +2709,7 @@ $('dlSvg').onclick = function(){
   toast('SVG baixado'); saveHist();
 };
 $('cpLink').onclick = function(){
-  (navigator.clipboard ? navigator.clipboard.writeText(state.url) : Promise.reject()).then(function(){ toast(state.mode === 'text' ? 'Conteúdo copiado' : 'Link copiado'); }, function(){ prompt('Copie:', state.url); });
+  (navigator.clipboard ? navigator.clipboard.writeText(contentHref()) : Promise.reject()).then(function(){ toast('Link do conteúdo copiado'); }, function(){ prompt('Copie o link:', contentHref()); });
 };
 
 /* ---------- Ler título da página ---------- */
