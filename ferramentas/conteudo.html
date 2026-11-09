@@ -30,6 +30,9 @@ footer{margin-top:20px;font-size:12px;color:var(--muted);text-align:center;font-
 footer b{color:var(--ink);font-weight:500}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:30px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.box.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+.nota{margin-top:16px;font-size:13.5px;line-height:1.6;color:#3d3a37;background:#f6f3ee;border-left:3px solid #e0b026;border-radius:8px;padding:12px 14px;text-align:left}
+.lin{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #eee;text-align:left}.lin:last-child{border:0}.lin span{color:#77706a;font-size:13px}.lin b{font-weight:500;text-align:right;word-break:break-word}
 </style>
 </head>
 <body>
@@ -46,16 +49,33 @@ footer b{color:var(--ink);font-weight:500}
 <footer><b>Mude Imóveis</b> · Mude que a Gente te Acompanha · CRECI/MS 6052-J</footer>
 <div class="toast" id="toast"></div>
 <script>
+window.addEventListener('hashchange', function(){ location.reload(); });
 (function(){
   function dec(s){ try { s = s.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '='; var bin = atob(s), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return new TextDecoder().decode(b); } catch(e){ return ''; } }
-  var p = new URLSearchParams(location.hash.slice(1)), txt = dec(p.get('t') || ''), h = dec(p.get('h') || '');
-  var T = document.getElementById('t');
-  if (h){ document.getElementById('h').textContent = h; document.title = h + ' · Mude Imóveis'; }
-  if (txt){ T.textContent = txt; }
-  else { T.className = 'box empty'; T.textContent = 'Nenhum conteúdo foi encontrado neste link. Confira se ele foi copiado por inteiro.'; document.getElementById('cp').style.display = 'none'; }
-  document.getElementById('cp').onclick = function(){
-    var ok = function(){ var t = document.getElementById('toast'); t.textContent = 'Conteúdo copiado'; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 1800); };
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok, function(){ prompt('Copie:', txt); }); else prompt('Copie:', txt);
+  var p = new URLSearchParams(location.hash.slice(1)), txt = dec(p.get('t') || ''), h = dec(p.get('h') || ''), k = p.get('k') || 'texto';
+  var $ = function(id){ return document.getElementById(id); }, T = $('t'), CP = $('cp'), copiar = txt;
+  function toast(m){ var t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 1800); }
+  function nota(html){ var d = document.createElement('div'); d.className = 'nota'; d.innerHTML = html; CP.parentNode.insertBefore(d, CP.nextSibling); }
+  if (h){ $('h').textContent = h; document.title = h + ' · Mude Imóveis'; }
+  if (!txt){ T.className = 'box empty'; T.textContent = 'Nenhum conteúdo foi encontrado neste link. Confira se ele foi copiado por inteiro.'; CP.style.display = 'none'; return; }
+  if (k === 'pix'){
+    if (!h) $('h').textContent = 'Pagamento via Pix';
+    T.className = 'box mono'; T.textContent = txt; CP.textContent = 'Copiar código Pix';
+    nota('<b>Como pagar:</b> toque em <b>Copiar código Pix</b>, abra o aplicativo do seu banco, entre em <b>Pix › Pix Copia e Cola</b>, cole o código e confira o recebedor antes de confirmar.');
+  } else if (k === 'contato'){
+    var get = function(re){ var m = txt.match(re); return m ? m[1].replace(/\\([,;\\])/g, '$1') : ''; };
+    var linhas = [['Nome', get(/^FN:(.*)$/m)], ['Empresa', get(/^ORG:(.*)$/m)], ['Cargo', get(/^TITLE:(.*)$/m)], ['Celular', get(/^TEL[^:]*:(.*)$/m)], ['E-mail', get(/^EMAIL[^:]*:(.*)$/m)], ['Site', get(/^URL:(.*)$/m)], ['Endereço', get(/^ADR[^:]*:;;([^;]*)/m)]].filter(function(l){ return l[1]; });
+    T.innerHTML = ''; linhas.forEach(function(l){ var r = document.createElement('div'); r.className = 'lin'; var a = document.createElement('span'); a.textContent = l[0]; var b = document.createElement('b'); b.textContent = l[1]; r.appendChild(a); r.appendChild(b); T.appendChild(r); });
+    CP.textContent = 'Salvar nos contatos';
+    CP.onclick = function(){ var u = URL.createObjectURL(new Blob([txt], {type:'text/vcard'})); var a = document.createElement('a'); a.href = u; a.download = (get(/^FN:(.*)$/m) || 'contato').replace(/[^\w\s-]/g,'') + '.vcf'; document.body.appendChild(a); a.click(); a.remove(); };
+    return;
+  } else {
+    T.textContent = txt;
+    if (k === 'wifi'){ var sm = txt.match(/Senha: (.*)$/m); if (sm){ copiar = sm[1]; CP.textContent = 'Copiar senha'; } }
+  }
+  CP.onclick = function(){
+    var ok = function(){ toast(k === 'pix' ? 'Código Pix copiado' : 'Copiado'); };
+    if (navigator.clipboard) navigator.clipboard.writeText(copiar).then(ok, function(){ prompt('Copie:', copiar); }); else prompt('Copie:', copiar);
   };
 })();
 </script>
