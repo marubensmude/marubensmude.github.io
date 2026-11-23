@@ -2938,29 +2938,42 @@ $('cpEmp').onclick = function(){ var t = empText(); (navigator.clipboard ? navig
 
 /* busca de CNPJ (BrasilAPI, dados públicos da Receita Federal) */
 function titleCase(s){ return (s || '').toLowerCase().replace(/(^|\s|\/|-)([a-zà-ú])/g, function(m, a, b){ return a + b.toUpperCase(); }).replace(/\b(De|Da|Do|Das|Dos|E)\b/g, function(m){ return m.toLowerCase(); }); }
+function cnpjFontes(c){
+  var j = function(u){ return fetch(u).then(function(r){ if (r.status === 404) throw 404; if (!r.ok) throw r.status; return r.json(); }); };
+  var fontes = [
+    function(){ return j('https://brasilapi.com.br/api/cnpj/v1/' + c).then(function(d){ return {razao:d.razao_social, fant:d.nome_fantasia, log:[d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '), num:d.numero, comp:d.complemento, bairro:d.bairro, cid:d.municipio, uf:d.uf, cep:d.cep, tel:d.ddd_telefone_1, email:d.email, socios:(d.qsa || []).map(function(s){ return {nome:s.nome_socio, cargo:s.qualificacao_socio}; })}; }); },
+    function(){ return j('https://publica.cnpj.ws/cnpj/' + c).then(function(d){ var e = d.estabelecimento || {}, ie = (e.inscricoes_estaduais || []).filter(function(x){ return x && x.ativo !== false; })[0]; return {razao:d.razao_social, fant:e.nome_fantasia, log:[e.tipo_logradouro, e.logradouro].filter(Boolean).join(' '), num:e.numero, comp:e.complemento, bairro:e.bairro, cid:(e.cidade || {}).nome, uf:(e.estado || {}).sigla, cep:e.cep, tel:(e.ddd1 || '') + (e.telefone1 || ''), email:e.email, ie: ie ? ie.inscricao_estadual : '', socios:(d.socios || []).map(function(s){ return {nome:s.nome, cargo:(s.qualificacao_socio || {}).descricao}; })}; }); },
+    function(){ return j('https://open.cnpja.com/office/' + c).then(function(d){ var a = d.address || {}, co = d.company || {}, ph = (d.phones || [])[0], em = (d.emails || [])[0]; return {razao:co.name, fant:d.alias, log:a.street, num:a.number, comp:a.details, bairro:a.district, cid:a.city, uf:a.state, cep:a.zip, tel: ph ? (ph.area || '') + (ph.number || '') : '', email: em ? em.address : '', socios:(co.members || []).map(function(m){ return {nome:(m.person || {}).name, cargo:(m.role || {}).text}; })}; }); }
+  ];
+  var i = 0, nf = 0;
+  return new Promise(function(res, rej){
+    (function prox(){ if (i >= fontes.length) return rej(nf === fontes.length ? 404 : 0); fontes[i++]().then(res, function(e){ if (e === 404) nf++; prox(); }); })();
+  });
+}
 $('btnCnpj').onclick = function(){
   var c = digits($('eCnpjBusca').value || $('eCnpj').value), h = $('cnpjHint');
   if (c.length !== 14 || !empCnpjOk(c)){ h.className = 'hint err'; h.textContent = 'CNPJ inválido. Confira os 14 dígitos.'; return; }
   h.className = 'hint'; h.textContent = 'Consultando a Receita Federal…';
-  fetch('https://brasilapi.com.br/api/cnpj/v1/' + c).then(function(r){ if (!r.ok) throw r.status; return r.json(); }).then(function(d){
-    $('eRazao').value = d.razao_social || '';
-    $('eFant').value = d.nome_fantasia ? titleCase(d.nome_fantasia) : '';
+  cnpjFontes(c).then(function(d){
+    $('eRazao').value = d.razao || '';
+    $('eFant').value = d.fant ? titleCase(d.fant) : '';
     $('eCnpj').value = MASK.cnpj(c);
-    $('eLog').value = titleCase([d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '));
-    $('eNum').value = d.numero || ''; $('eComp').value = titleCase(d.complemento || '');
-    $('eBairro').value = titleCase(d.bairro || ''); $('eCid').value = titleCase(d.municipio || ''); $('eUf').value = (d.uf || '').toUpperCase();
+    $('eLog').value = titleCase(d.log || '');
+    $('eNum').value = d.num || ''; $('eComp').value = titleCase(d.comp || '');
+    $('eBairro').value = titleCase(d.bairro || ''); $('eCid').value = titleCase(d.cid || ''); $('eUf').value = (d.uf || '').toUpperCase();
     $('eCep').value = d.cep ? MASK.cep(digits(String(d.cep))) : '';
-    if (d.ddd_telefone_1) $('eTel').value = MASK.tel(digits(d.ddd_telefone_1));
-    if (d.email) $('eMail').value = String(d.email).toLowerCase();
-    var qsa = d.qsa || [];
+    $('eTel').value = digits(d.tel).length >= 10 ? MASK.tel(digits(d.tel)) : '';
+    $('eMail').value = d.email ? String(d.email).toLowerCase() : '';
+    if (d.ie) $('eIe').value = d.ie;
+    var qsa = (d.socios || []).filter(function(s){ return s.nome; });
     if (qsa.length){
       var cur = socioList();
       if (!cur.length || confirm('Substituir os sócios preenchidos pelos ' + qsa.length + ' sócio(s) registrados na Receita?')){
         $('socios').innerHTML = '';
-        qsa.forEach(function(s){ addSocio({nome: titleCase(s.nome_socio || ''), cargo: titleCase(s.qualificacao_socio || '').replace(/-/g, ' ').toLowerCase() || 'sócio'}); });
+        qsa.forEach(function(s){ addSocio({nome: titleCase(s.nome), cargo: String(s.cargo || 'sócio').replace(/-/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()}); });
       }
     }
-    h.className = 'hint ok'; h.textContent = 'Dados da empresa preenchidos' + (qsa.length ? ' e ' + qsa.length + ' sócio(s) encontrados' : '') + '. Complete RG, CPF, estado civil e endereço de cada sócio.';
+    h.className = 'hint ok'; h.textContent = 'Dados da empresa preenchidos' + (qsa.length ? ' e ' + qsa.length + ' sócio(s) encontrado(s)' : '') + '. Complete RG, CPF, estado civil e endereço de cada sócio e confira tudo.';
     generate(false);
   }).catch(function(e){
     h.className = 'hint err'; h.textContent = e === 404 ? 'CNPJ não encontrado na base da Receita.' : 'Não foi possível consultar agora. Preencha os dados manualmente.';
