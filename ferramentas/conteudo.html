@@ -50,14 +50,15 @@ footer b{color:var(--ink);font-weight:500}
 <div class="toast" id="toast"></div>
 <script>
 window.addEventListener('hashchange', function(){ location.reload(); });
-(function(){
+function main(txtZ){
   function dec(s){ try { s = s.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '='; var bin = atob(s), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return new TextDecoder().decode(b); } catch(e){ return ''; } }
-  var p = new URLSearchParams(location.hash.slice(1)), txt = dec(p.get('t') || ''), h = dec(p.get('h') || ''), k = p.get('k') || 'texto';
+  var p = new URLSearchParams(location.hash.slice(1)), txt = txtZ != null ? txtZ : dec(p.get('t') || ''), h = dec(p.get('h') || ''), k = p.get('k') || 'texto';
   var $ = function(id){ return document.getElementById(id); }, T = $('t'), CP = $('cp'), copiar = txt;
   function toast(m){ var t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 1800); }
   function nota(html){ var d = document.createElement('div'); d.className = 'nota'; d.innerHTML = html; CP.parentNode.insertBefore(d, CP.nextSibling); }
   if (h){ $('h').textContent = h; document.title = h + ' · Mude Imóveis'; }
   if (!txt){ T.className = 'box empty'; T.textContent = 'Nenhum conteúdo foi encontrado neste link. Confira se ele foi copiado por inteiro.'; CP.style.display = 'none'; return; }
+  if (k === 'emp'){ if (!h) $('h').textContent = 'Qualificação da empresa'; CP.textContent = 'Copiar qualificação'; nota('Confira os dados antes de usar em contratos e documentos oficiais.'); }
   if (k === 'pix'){
     if (!h) $('h').textContent = 'Pagamento via Pix';
     T.className = 'box mono'; T.textContent = txt; CP.textContent = 'Copiar código Pix';
@@ -77,6 +78,19 @@ window.addEventListener('hashchange', function(){ location.reload(); });
     var ok = function(){ toast(k === 'pix' ? 'Código Pix copiado' : 'Copiado'); };
     if (navigator.clipboard) navigator.clipboard.writeText(copiar).then(ok, function(){ prompt('Copie:', copiar); }); else prompt('Copie:', copiar);
   };
+}
+(function(){
+  var p = new URLSearchParams(location.hash.slice(1)), z = p.get('z');
+  if (!z) return main(null);
+  try {
+    var s = z.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '=';
+    var bin = atob(s), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    var ds = new DecompressionStream('deflate-raw'), w = ds.writable.getWriter(); w.write(b); w.close();
+    new Response(ds.readable).text().then(function(tx){ main(tx); }, function(){ main(''); });
+  } catch(e){
+    main('');
+    var T = document.getElementById('t'); T.textContent = 'Este celular não conseguiu abrir o conteúdo. Atualize o navegador ou o sistema e leia o QR Code novamente.';
+  }
 })();
 </script>
 </body>
