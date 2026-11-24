@@ -188,8 +188,10 @@ select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(224
         </div>
         <div class="two">
           <div><label for="vcEmp">Empresa</label><input id="vcEmp" data-f type="text" value="Mude Imóveis"></div>
-          <div><label for="vcCargo">Cargo</label><input id="vcCargo" data-f type="text" placeholder="Corretor de Imóveis · CRECI/MS 0000"></div>
+          <div><label for="vcCargo">Cargo</label><input id="vcCargo" data-f type="text" placeholder="Corretor de Imóveis"></div>
         </div>
+        <label for="vcCreci">CRECI <small>(opcional)</small></label>
+        <input id="vcCreci" data-f type="text" placeholder="Ex.: 5710 ou CRECI/MS 5710">
         <div class="two">
           <div><label for="vcCel">Celular / WhatsApp</label><input id="vcCel" data-f type="text" inputmode="tel" placeholder="(67) 99999-9999"></div>
           <div><label for="vcMail">E-mail</label><input id="vcMail" data-f type="text" inputmode="email" placeholder="nome@mudeimobiliaria.com.br"></div>
@@ -2795,6 +2797,7 @@ var SOCIO_FIELDS = [
   ['cargo','Cargo na empresa','text','sócio administrador'], ['nasc','Data de nascimento <small>(opcional)</small>','text','dd/mm/aaaa'],
   ['rg','RG nº','text',''], ['org','Órgão emissor/UF','text','SSP/MS'],
   ['cpf','CPF','text','000.000.000-00'], ['mail','E-mail <small>(opcional)</small>','text',''],
+  ['creci','CRECI <small>(opcional)</small>','text','Ex.: 5710 ou CRECI/MS 5710'], ['_vazio','','skip',''],
   ['end','Endereço residencial completo','text','Rua, nº, complemento, bairro, cidade/UF, CEP']
 ];
 function addSocio(d){
@@ -2805,6 +2808,7 @@ function addSocio(d){
     var full = f[0] === 'nome' || f[0] === 'end';
     if (full) html += '</div>';
     html += (full ? '' : '<div>') + '<label>' + f[1] + '</label>';
+    if (f[2] === 'skip'){ html += '</div>'; return; }
     if (f[2] === 'sel') html += '<select data-s="genero"><option value="m">Masculino</option><option value="f">Feminino</option></select>';
     else html += '<input type="text" data-s="' + f[0] + '" placeholder="' + f[3] + '"' + (f[0] === 'cpf' ? ' inputmode="numeric" data-mask="cpf"' : f[0] === 'nasc' ? ' inputmode="numeric" data-mask="data"' : '') + '>';
     html += full ? '<div class="g2">' : '</div>';
@@ -2844,12 +2848,18 @@ function socioList(){
 function enderecoEmp(){
   var a = val('eLog'); if (val('eNum')) a += (a ? ', nº ' : 'nº ') + val('eNum');
   [val('eComp'), val('eBairro')].forEach(function(x){ if (x) a += (a ? ', ' : '') + x; });
-  var cid = val('eCid') + (val('eUf') ? '/' + val('eUf').toUpperCase() : '');
+  var cid = val('eCid') ? val('eCid') + (val('eUf') ? '/' + val('eUf').toUpperCase() : '') : '';
   if (cid) a += (a ? ', ' : '') + cid;
   if (val('eCep')) a += (a ? ', ' : '') + 'CEP ' + val('eCep');
   return a;
 }
 function genderize(s, f){ if (!s || !f) return s; return s.replace(/\bbrasileiro\b/i, function(m){ return m[0] === 'B' ? 'Brasileira' : 'brasileira'; }).replace(/\bcasado\b/i, 'casada').replace(/\bsolteiro\b/i, 'solteira').replace(/\bdivorciado\b/i, 'divorciada').replace(/\bviúvo\b/i, 'viúva').replace(/\bseparado\b/i, 'separada').replace(/\bempresário\b/i, 'empresária').replace(/\bsócio\b/i, 'sócia'); }
+function creciFmt(raw, ufPadrao){
+  var s = String(raw || '').trim(); if (!s) return null;
+  var m = s.match(/\/\s*([A-Za-z]{2})\b/), uf = (m ? m[1] : (ufPadrao || 'MS')).toUpperCase();
+  var num = s.replace(/creci/i, '').replace(/\/\s*[A-Za-z]{2}\b/, '').replace(/\b(n[º°o]|sob o)\.?/gi, '').replace(/[:\s]/g, '').replace(/^[-–]+/, '');
+  return num ? {uf:uf, num:num} : null;
+}
 function socioQual(o){
   var f = o.genero === 'f', p = [];
   p.push((o.nome || '[NOME DO SÓCIO]').toUpperCase());
@@ -2857,6 +2867,7 @@ function socioQual(o){
   if (o.regime) p[p.length - 1] += ' sob o regime de ' + o.regime.replace(/^(sob o )?regime (de )?/i, '');
   if (o.prof) p.push(genderize(o.prof, f));
   if (o.cargo) p.push(genderize(o.cargo, f));
+  var cr = creciFmt(o.creci, val('eUf')); if (cr) p.push((f ? 'inscrita' : 'inscrito') + ' no CRECI/' + cr.uf + ' sob o nº ' + cr.num);
   if (o.nasc) p.push((f ? 'nascida' : 'nascido') + ' em ' + o.nasc);
   if (o.rg) p.push((f ? 'portadora' : 'portador') + ' do RG nº ' + o.rg + (o.org ? ' – ' + o.org : ''));
   if (o.cpf) p.push((f ? 'inscrita' : 'inscrito') + ' no CPF sob o nº ' + o.cpf);
@@ -2880,13 +2891,14 @@ function empText(){
     if (val('eTel')) L.push('Telefone: ' + val('eTel'));
     if (val('eMail')) L.push('E-mail: ' + val('eMail'));
     socios.forEach(function(o, i){
-      L.push(''); L.push((socios.length > 1 ? 'SÓCIO ' + (i + 1) : (o.genero === 'f' ? 'SÓCIA' : 'SÓCIO')) + (o.cargo ? ' – ' + o.cargo.toUpperCase() : ''));
+      L.push(''); var fe = o.genero === 'f'; L.push((fe ? 'SÓCIA' : 'SÓCIO') + (socios.length > 1 ? ' ' + (i + 1) : '') + (o.cargo && !/^s[óo]ci[oa]$/i.test(genderize(o.cargo, fe)) ? ' – ' + genderize(o.cargo, fe).toUpperCase() : ''));
       if (o.nome) L.push('Nome: ' + o.nome.toUpperCase());
       var c = [o.nac, o.civil + (o.regime ? ' (' + o.regime + ')' : ''), o.prof].filter(function(x){ return x && x.trim(); }).map(function(x){ return genderize(x, o.genero === 'f'); });
       if (c.length) L.push('Qualificação: ' + c.join(', '));
       if (o.nasc) L.push('Nascimento: ' + o.nasc);
       if (o.rg) L.push('RG: ' + o.rg + (o.org ? ' – ' + o.org : ''));
       if (o.cpf) L.push('CPF: ' + o.cpf);
+      var crf = creciFmt(o.creci, val('eUf')); if (crf) L.push('CRECI: CRECI/' + crf.uf + ' nº ' + crf.num);
       if (o.end) L.push('Endereço: ' + o.end);
       if (o.mail) L.push('E-mail: ' + o.mail);
     });
@@ -3124,7 +3136,8 @@ function montar(save){
     var esc = function(s){ return s.replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;'); };
     var L = ['BEGIN:VCARD', 'VERSION:3.0', 'N:' + esc(sob) + ';' + esc(nome) + ';;;', 'FN:' + esc((nome + ' ' + sob).trim() || v('vcEmp'))];
     if (v('vcEmp')) L.push('ORG:' + esc(v('vcEmp')));
-    if (v('vcCargo')) L.push('TITLE:' + esc(v('vcCargo')));
+    var vcr = creciFmt(v('vcCreci')), tit = [v('vcCargo'), vcr ? 'CRECI/' + vcr.uf + ' ' + vcr.num : ''].filter(Boolean).join(' · ');
+    if (tit) L.push('TITLE:' + esc(tit));
     var cel = foneBR(v('vcCel')); if (cel) L.push('TEL;TYPE=CELL:+' + cel);
     if (v('vcMail')) L.push('EMAIL;TYPE=INTERNET:' + v('vcMail'));
     if (v('vcSite')) L.push('URL:' + (/^https?:/i.test(v('vcSite')) ? v('vcSite') : 'https://' + v('vcSite')));
